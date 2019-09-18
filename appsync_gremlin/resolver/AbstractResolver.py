@@ -29,7 +29,7 @@ def format_value(value: Any) -> Any:
     """
 
     if isinstance(value, datetime):
-        return datetime.isoformat()
+        return value.isoformat()
 
     return value
 
