@@ -65,3 +65,10 @@ class ResolverInput:
         """
 
         return self._source
+
+    def __str__(self) -> str:
+        return "ResolverInput: type_name = {}, field_name = {}, arguments = {}, identity = {}, source = {}".format(
+            self.type_name, self.field_name, self.arguments, self.identity, self.source
+        )
+
+    __repr__ = __str__
