@@ -1,5 +1,6 @@
 from abc import ABC as Abstract, abstractmethod, abstractproperty
 from typing import Dict, Any, List
+from datetime import datetime
 
 from gremlin_python.process.graph_traversal import GraphTraversal, unfold
 from gremlin_python.process.traversal import T
@@ -20,6 +21,17 @@ def format_key(key: Any) -> Any:
 
     return key
 
+def format_value(value: Any) -> Any:
+    """
+
+    :param value:
+    :return:
+    """
+
+    if isinstance(value, datetime):
+        return datetime.isoformat()
+
+    return value
 
 def format_value_map(value_map: Dict) -> Dict:
     """
@@ -29,7 +41,7 @@ def format_value_map(value_map: Dict) -> Dict:
     """
 
     return {
-        format_key(k): v for k, v in value_map.items()
+        format_key(k): format_value(v) for k, v in value_map.items()
     }
 
 
