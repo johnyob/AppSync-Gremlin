@@ -1,4 +1,5 @@
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Optional
+from logging import Logger
 
 from gremlin_python.driver.driver_remote_connection import DriverRemoteConnection
 from gremlin_python.process.graph_traversal import GraphTraversal
@@ -12,7 +13,7 @@ from appsync_gremlin.helpers.Exceptions import AppSyncException
 
 class AppSync:
 
-    def __init__(self, connection_config: Dict):
+    def __init__(self, connection_config: Dict, logger: Optional[Logger] = None):
         """
 
         """
@@ -20,6 +21,7 @@ class AppSync:
         self._connection_method = connection_config.get("connection_method")
         self._neptune_cluster_endpoint = connection_config.get("neptune_cluster_endpoint")
         self._neptune_cluster_port = connection_config.get("neptune_cluster_port")
+        self._logger = logger
 
         self._resolvers = {}
 
@@ -62,11 +64,18 @@ class AppSync:
                 source=event.get("source")
             )
 
+            if self._logger:
+                self._logger.info("The resolver input is {}".format(str(resolver_input)))
+
             resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
             try:
                 response = resolver.handle(self._get_traversal(), resolver_input)
             except Exception as error:
                 raise AppSyncException(error) from error
+
+
+            if self._logger:
+                self._logger.info("The resolver response is {}".format(str(response)))
 
             return response
 
