@@ -1,0 +1,4 @@
+*__pycache__/
+dist/
+build/
+appsync_gremlin.egg-info/
