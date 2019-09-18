@@ -2,3 +2,4 @@
 dist/
 build/
 appsync_gremlin.egg-info/
+.idea/
