@@ -21,6 +21,7 @@ def format_key(key: Any) -> Any:
 
     return key
 
+
 def format_value(value: Any) -> Any:
     """
 
@@ -32,6 +33,7 @@ def format_value(value: Any) -> Any:
         return value.isoformat()
 
     return value
+
 
 def format_value_map(value_map: Dict) -> Dict:
     """
@@ -147,7 +149,7 @@ class VertexListFieldResolver(AbstractResolver):
 
         traversal = self.get_traversal(traversal, resolver_input)
 
-        return self.format_response(apply_filters(traversal, input_dict).valueMap().by(unfold()).toList())
+        return self.format_response(apply_filters(traversal, input_dict).valueMap(True).by(unfold()).toList())
 
 
 class VertexFieldResolver(AbstractResolver):
@@ -170,7 +172,7 @@ class VertexFieldResolver(AbstractResolver):
         :return:
         """
 
-        traversal = self.get_traversal(traversal, resolver_input).valueMap().by(unfold())
+        traversal = self.get_traversal(traversal, resolver_input).valueMap(True).by(unfold())
 
         if traversal.hasNext():
             return self.format_response(traversal.next())
