@@ -73,7 +73,6 @@ class AppSync:
             except Exception as error:
                 raise AppSyncException(error) from error
 
-
             if self._logger:
                 self._logger.info("The resolver response is {}".format(str(response)))
 
