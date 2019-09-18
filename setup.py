@@ -16,7 +16,7 @@ packages = [
 
 setuptools.setup(
     name="appsync-gremlin",
-    version="0.0.2",
+    version="0.0.3",
     author="Alistair O'Brien",
     author_email="alistair@duneroot.co.uk",
     description="A simple Python interface for AppSync resolvers and Gremlin traversals.",
