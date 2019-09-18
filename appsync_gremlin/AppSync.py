@@ -59,7 +59,7 @@ class AppSync:
                 field_name=event.get("field_name"),
                 arguments=event.get("arguments"),
                 identity=event.get("identity"),
-                source=event.get("scope")
+                source=event.get("source")
             )
 
             resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
@@ -71,4 +71,3 @@ class AppSync:
             return response
 
         return handler
-
