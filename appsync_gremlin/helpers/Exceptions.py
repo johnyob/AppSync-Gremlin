@@ -1,0 +1,3 @@
+class AppSyncException(Exception):
+    pass
+
