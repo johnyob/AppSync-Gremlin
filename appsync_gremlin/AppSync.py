@@ -1,4 +1,4 @@
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, Union, List
 from logging import Logger
 
 from gremlin_python.driver.driver_remote_connection import DriverRemoteConnection
@@ -8,7 +8,6 @@ from gremlin_python.process.anonymous_traversal import traversal
 from appsync_gremlin.resolver.AbstractResolver import AbstractResolver
 from appsync_gremlin.resolver.ResolverInput import ResolverInput
 from appsync_gremlin.helpers.Exceptions import AppSyncException
-
 
 
 class AppSync:
@@ -48,34 +47,64 @@ class AppSync:
 
         self._resolvers[(resolver.type_name, resolver.field_name)] = resolver
 
+    def _handle_resolver(self, resolver_input: ResolverInput) -> Any:
+
+        if self._logger:
+            self._logger.info("The resolver input is {}".format(str(resolver_input)))
+
+        resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
+        try:
+            response = resolver.handle(self._get_traversal(), resolver_input)
+        except Exception as error:
+            raise AppSyncException(error) from error
+
+        if self._logger:
+            self._logger.info("The resolver response is {}".format(str(response)))
+
+        return response
+
     def lambda_handler(self) -> Callable:
         """
 
         :return:
         """
 
-        def handler(event: Dict, context: Any) -> Any:
+        def handler(payload: Union[Dict,List], context: Any) -> Any:
+            """
+            The handler for an AppSync application using AWS Lambda either takes a
+            payload dictionary or a payload list.
 
-            resolver_input = ResolverInput(
-                type_name=event.get("type_name"),
-                field_name=event.get("field_name"),
-                arguments=event.get("arguments"),
-                identity=event.get("identity"),
-                source=event.get("source")
-            )
+            The payload is a dictionary <=> the operation "Invoke" is used on the Lambda function.
+            The payload is a list <=> the operation "BatchInvoke" is used on the Lambda function.
 
-            if self._logger:
-                self._logger.info("The resolver input is {}".format(str(resolver_input)))
+            We will use these two cases to decide how we handle our resolvers.
 
-            resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
-            try:
-                response = resolver.handle(self._get_traversal(), resolver_input)
-            except Exception as error:
-                raise AppSyncException(error) from error
+            :param payload: (list|dict)
+            :param context: (Any)
+            :return: (Any)
+            """
 
-            if self._logger:
-                self._logger.info("The resolver response is {}".format(str(response)))
+            # If the BatchInvoke operation is used.
+            if isinstance(payload, list):
 
-            return response
+                return [
+                    self._handle_resolver(ResolverInput(
+                        type_name=resolver_input.get("type_name"),
+                        field_name=resolver_input.get("field_name"),
+                        arguments=resolver_input.get("arguments"),
+                        identity=resolver_input.get("identity"),
+                        source=resolver_input.get("source")
+                    ))
+                    for resolver_input in payload
+                ]
+
+            # If the Invoke operation is used
+            return self._handle_resolver(ResolverInput(
+                type_name=payload.get("type_name"),
+                field_name=payload.get("field_name"),
+                arguments=payload.get("arguments"),
+                identity=payload.get("identity"),
+                source=payload.get("source")
+            ))
 
         return handler
