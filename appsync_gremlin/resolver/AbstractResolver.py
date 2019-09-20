@@ -1,12 +1,12 @@
 from abc import ABC as Abstract, abstractmethod, abstractproperty
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
 
-from gremlin_python.process.graph_traversal import GraphTraversal, unfold
+from gremlin_python.process.graph_traversal import GraphTraversal, unfold, __
 from gremlin_python.process.traversal import T
 
 from appsync_gremlin.resolver.ResolverInput import ResolverInput
-from appsync_gremlin.filter.Filter import apply_filters
+from appsync_gremlin.filter.AbstractFilter import AbstractFilter
 
 
 def format_key(key: Any) -> Any:
@@ -94,7 +94,6 @@ class AbstractResolver(Abstract):
 
         pass
 
-
     @abstractmethod
     def get_traversal(self, traversal: GraphTraversal, resolver_input: ResolverInput) -> GraphTraversal:
         """
@@ -126,18 +125,57 @@ class AbstractResolver(Abstract):
 
 class VertexListFieldResolver(AbstractResolver):
 
+    def get_filter(self) -> AbstractFilter:
+        """
+
+        :return:
+        """
+
+        pass
+
+
+
+    def _get_range(self, page: int, per_page: int) -> Tuple[int, int]:
+        """
+        Returns the Gremlin range from page options in the format:
+            (first, last)
+
+        :param page: (int)
+        :param per_page: (int)
+        :return: (int, int)
+        """
+
+        return (page - 1) * per_page, page * per_page
+
+    def paginate(self, response: List[Dict], page: int, per_page: int, total: int) -> Dict:
+        """
+
+        :param response:
+        :param page:
+        :param per_page:
+        :param total:
+        :return:
+        """
+
+        return {
+            "data": response,
+            "page": page,
+            "per_page": per_page,
+            "total": total
+        }
+
     def format_response(self, response: List[Dict]) -> List[Dict]:
         """
         Iterates through the response list, applying format_value_map on the value map. This serializes the value map
         into something that can be returned by a AWS Lambda function.
 
-        :param response: (list)
+        :param response: (Dict)
         :return: (list)
         """
 
         return [format_value_map(value_map) for value_map in response]
 
-    def handle(self, traversal: GraphTraversal, resolver_input: ResolverInput) -> List[Dict]:
+    def handle(self, traversal: GraphTraversal, resolver_input: ResolverInput) -> Dict:
         """
 
         :param traversal:
@@ -146,10 +184,24 @@ class VertexListFieldResolver(AbstractResolver):
         """
 
         input_dict = resolver_input.arguments.get("input", {})
+        pagination_info = resolver_input.arguments.get("pagination", {
+            "page": 1,
+            "per_page": 10
+        })
+
+        page, per_page = pagination_info.get("page"), pagination_info.get("per_page")
+
+        first, last = self._get_range(page, per_page)
 
         traversal = self.get_traversal(traversal, resolver_input)
 
-        return self.format_response(apply_filters(traversal, input_dict).valueMap(True).by(unfold()).toList())
+        response_and_total = self.get_filter().apply_filter(traversal, input_dict).valueMap(True).\
+            by(unfold()).fold().project("data", "total").select("data", "total").\
+            by(__.unfold().range(first, last).fold()).by(__.unfold().count()).next()
+
+        response = self.format_response(response_and_total.get("data"))
+
+        return self.paginate(response, page, per_page, response_and_total.get("total"))
 
 
 class VertexFieldResolver(AbstractResolver):
@@ -164,7 +216,7 @@ class VertexFieldResolver(AbstractResolver):
 
         return format_value_map(response)
 
-    def handle(self, traversal: GraphTraversal, resolver_input: ResolverInput) -> Dict:
+    def handle(self, traversal: GraphTraversal, resolver_input: ResolverInput) -> Optional[Dict]:
         """
 
         :param traversal:
