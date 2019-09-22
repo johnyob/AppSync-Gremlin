@@ -10,5 +10,6 @@ from appsync_gremlin.AppSync import AppSync
 from appsync_gremlin.filter import (
     RelationshipDirection, scalar_filter, vertex_filter, relationship_filter,
     TraversalFilterFunction, Relationship, FilterFunction, NameFunction,
-    id_filter, string_filter, int_filter, float_filter, date_time_filter, boolean_filter, enum_filter
+    id_filter, string_filter, int_filter, float_filter, date_time_filter, boolean_filter, enum_filter,
+    name
 )
