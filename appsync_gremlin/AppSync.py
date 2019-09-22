@@ -1,11 +1,11 @@
-from typing import Dict, Any, Callable, Optional, Union, List
+from typing import Dict, Any, Callable, Optional, Union, List, Tuple
 from logging import Logger
 
 from gremlin_python.driver.driver_remote_connection import DriverRemoteConnection
 from gremlin_python.process.graph_traversal import GraphTraversal
 from gremlin_python.process.anonymous_traversal import traversal
 
-from appsync_gremlin.resolver.AbstractResolver import AbstractResolver
+from appsync_gremlin.resolver.Resolver import ResolverFunction
 from appsync_gremlin.resolver.ResolverInput import ResolverInput
 from appsync_gremlin.helpers.Exceptions import AppSyncException
 
@@ -38,14 +38,14 @@ class AppSync:
 
         return traversal().withRemote(remote_connection)
 
-    def add_resolver(self, resolver: AbstractResolver):
+    def add_resolver(self, resolver_identifier: Tuple[str, str], resolver: ResolverFunction) -> None:
         """
 
         :param resolver:
         :return:
         """
 
-        self._resolvers[(resolver.type_name, resolver.field_name)] = resolver
+        self._resolvers[resolver_identifier] = resolver
 
     def _handle_resolver(self, resolver_input: ResolverInput) -> Any:
 
@@ -54,7 +54,7 @@ class AppSync:
 
         resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
         try:
-            response = resolver.handle(self._get_traversal(), resolver_input)
+            response = resolver(self._get_traversal(), resolver_input)
         except Exception as error:
             raise AppSyncException(error) from error
 
