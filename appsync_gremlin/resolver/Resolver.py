@@ -180,3 +180,15 @@ def calculated_field_resolver(traversal_func: TraversalResolverFunction) -> Calc
         return traversal.next()
 
     return handler
+
+
+def mutation_resolver(traversal_func: TraversalResolverFunction) -> ResolverFunction:
+
+    @functools.wraps(traversal_func)
+    def handler(traversal: GraphTraversal, resolver_input: ResolverInput) -> Dict:
+
+        traversal = traversal_func(traversal, resolver_input).valueMap(True).by(unfold())
+
+        return format_value_map(traversal.next())
+
+    return handler
