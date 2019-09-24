@@ -3,7 +3,7 @@ from appsync_gremlin.resolver import (
     TraversalFilterFunction, VertexListFieldResolverFunction, VertexFieldResolverFunction,
     CalculatedFieldResolverFunction,
     ResolverFunction,
-    vertex_field_resolver, vertex_list_field_resolver, calculated_field_resolver,
+    vertex_field_resolver, vertex_list_field_resolver, calculated_field_resolver, mutation_resolver,
     ResolverInput
 )
 from appsync_gremlin.AppSync import AppSync
