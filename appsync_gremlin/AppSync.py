@@ -52,11 +52,22 @@ class AppSync:
         if self._logger:
             self._logger.info("The resolver input is {}".format(str(resolver_input)))
 
+        response = {
+            "error": None,
+            "data": None
+        }
+
         resolver = self._resolvers[(resolver_input.type_name, resolver_input.field_name)]
         try:
-            response = resolver(self._get_traversal(), resolver_input)
-        except Exception as error:
-            raise AppSyncException(error) from error
+            response["data"] = resolver(self._get_traversal(), resolver_input)
+        except AppSyncException as error:
+            response["error"] = error.to_dict()
+        except Exception:
+            response["error"] = {
+                "error_type": "UNKNOWN",
+                "error_message": "Unknown error occurred. Please contact a system administrator.",
+                "data": None
+            }
 
         if self._logger:
             self._logger.info("The resolver response is {}".format(str(response)))
