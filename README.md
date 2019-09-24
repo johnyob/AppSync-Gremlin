@@ -3,12 +3,8 @@
 ## Overview
 
 Through the AppSync-Gremlin, developers can write powerful queries in GraphQL without having to worry
-about the underlying database query language in AWS Neptune. The AppSync-Gremlin provides
+too much about the underlying database query language in AWS Neptune. The AppSync-Gremlin provides
 lambda function code that converts query operation types (from GraphQL) to a gremlin traversal.
-
-Furthermore, the library validates the queries through the user of a GraphQL schema that
-specifies the underlying schema of the AWS Neptune database.
-
 
 ## Definitions
 
@@ -185,17 +181,89 @@ input EnumFilterInput {
 Note that these standards must be manually implemented in the original GraphQL schema. In future we may devise some method of augmenting a GraphQL schema
 so we don't have to manually implement them.
 
+Each of these scalar filters has a corresponding filter in the AppSync-Gremlin library. For example, the `StringFilterInput` has
+the scalar filter `string_filter`. 
+
 ### Pagination
 
-Not implemented yet - TODO.
+We also implement a pagination standard. For simplicity, we've decided to implement an offset based pagination, as it allows us to make us
+of the Gremlin traversal step `.range(first, offset)`. The stanardised pagination input is defined as follows:
+```
+input PaginationInput {
+  page: Int!
+  per_page: Int!
+}
+```
+We then use `page` and `per_page` to compute `first` and `offset` using the function `get_range`, shown below.
+```python
+def get_range(page: int, per_page: int) -> Tuple[int, int]:
+    """
+    Returns the Gremlin range from page options in the format:
+        (first, last)
 
-### Request Mapping Template
+    :param page: (Integer)
+    :param per_page: (Integer)
+    :return: (Integer, Integer)
+    """
 
-Use the Apache VTL
+    return (page - 1) * per_page, page * per_page
+```
+
+Once the traversal has been submitted and the result set has been return, we format the response into a pagination 
+response object. The GraphQL type for this response object for some GraphQL type `Type` is 
+```
+type Type {
+    .
+    .
+    .
+}
+
+type TypePage {
+    data: [Type]!
+    page: Int!
+    per_page: Int!
+    total: Int!
+}
+```
+where `total` is the `total` number of pages available. 
+
+## Error Handling and Request / Response Mapping Template
+
+The AppSync-Gremlin library provides automatic error handling for AppSync. The library does this via the user of the `AppSyncException`. 
+The `AppSyncException` requires 3 arguments when instantiated: `error_type`, `error_message` and `error_data` for type
+ string, string and dictionary respectively.
+
+For example, consider the mutation resolver that creates a `User` vertex. Naturally we want to ensure that a user doesn't have a duplicate vertex, 
+therefore we must add some form of validation within the resolver code which raises an `AppSyncException` with the relevant error information
+if the validation fails. 
+
+```python
+@mutation_resolver
+def create_user(traversal: GraphTraversal, resolver_input: ResolverInput) -> GraphTraversal:
+
+    username = resolver_input.arguments.get("username")
+    user = traversal.V().hasLabel("User").has("username", username)
+    
+    if user.hasNext():
+        raise AppSyncException(
+            error_type="BAD_REQUEST",
+            error_message="A user with username {} is already stored in the AWS Neptune database.".format(username),
+            error_data={
+                "username": username
+            }
+        )
+        
+    .
+    .
+    .
+```
+
+In order to ensure our `AppSyncException` work's with AppSync, we've had to define a request / response template mapping standard.
+For all resolvers, we must have the request template mapping:
 ```
 {
-  "version" : "2017-02-28",
-  "operation": "Invoke",
+  "version" : "2018-05-29",
+  "operation": "(Invoke|BatchInvoke)",
   "payload": {
     "type_name": String!,
     "field_name": String!,
@@ -205,7 +273,14 @@ Use the Apache VTL
   }
 }
 ```
-
+and the response mapping template:
+```
+#if ($context.result && $contet.result.error)
+    $utils.error($context.result.error.error_message, $context.result.error.error_type, $context.result.error.data)
+#else
+    $utils.toJson($context.result.data)
+#end
+```
 ### Usage
 
 TODO
