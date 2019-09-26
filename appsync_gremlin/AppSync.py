@@ -63,6 +63,9 @@ class AppSync:
         except AppSyncException as error:
             response["error"] = error.to_dict()
         except Exception:
+            if self._logger:
+                self._logger.error("An unknown error occured.", exc_info=True)
+
             response["error"] = {
                 "error_type": "UNKNOWN",
                 "error_message": "Unknown error occurred. Please contact a system administrator.",
