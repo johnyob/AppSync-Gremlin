@@ -6,7 +6,8 @@ from gremlin_python.process.traversal import (
 from appsync_gremlin.filter.Filter import (
     RelationshipDirection, scalar_filter, vertex_filter, relationship_filter,
     TraversalFilterFunction, Relationship, FilterFunction, NameFunction,
-    name
+    name,
+    EdgeDirection, edge_filter
 )
 
 
