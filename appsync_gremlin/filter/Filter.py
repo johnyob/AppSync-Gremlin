@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Callable
 from enum import Enum
 import functools
 
-from gremlin_python.process.graph_traversal import GraphTraversal, out, in_, inV, outV
+from gremlin_python.process.graph_traversal import GraphTraversal, out, in_, inV, outV, label
 
 
 ###
@@ -190,7 +190,7 @@ def vertex_filter(filters_func: FilterFunction) -> NameFunction:
 
             filters = filters_func()
 
-            traversal = traversal.hasLabel(vertex_name)
+            traversal = traversal.filter(label().is_(vertex_name))
 
             for field_name, filter_input in input_dict.items():
                 traversal = filters.get(field_name)(traversal, filter_input)
