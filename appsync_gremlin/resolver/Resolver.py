@@ -74,6 +74,10 @@ def paginate(response: List[Dict], page: int, per_page: int, total: int) -> Dict
     }
 
 
+def select_current_vertex(traversal: GraphTraversal) -> GraphTraversal:
+
+    return traversal.valueMap(True).by(unfold())
+
 ### Types
 
 
@@ -82,12 +86,17 @@ VertexListFieldResolverFunction = Callable[[GraphTraversal, ResolverInput], Dict
 VertexFieldResolverFunction = Callable[[GraphTraversal, ResolverInput], Optional[Dict]]
 CalculatedFieldResolverFunction = Callable[[GraphTraversal, ResolverInput], Any]
 ResolverFunction = Callable[[GraphTraversal, ResolverInput], Any]
-
+FormatFunction = Callable[[Dict], Dict]
+TraversalSelectionFunction = Callable[[GraphTraversal], GraphTraversal]
 
 ### Resolvers
 
 
-def vertex_list_field_resolver(filter_func: TraversalFilterFunction) -> Callable:
+def vertex_list_field_resolver(
+        filter: TraversalFilterFunction,
+        select: TraversalSelectionFunction = select_current_vertex,
+        format: FormatFunction = format_value_map
+) -> Callable:
     """
 
     :param filter_func:
@@ -120,12 +129,13 @@ def vertex_list_field_resolver(filter_func: TraversalFilterFunction) -> Callable
             first, last = get_range(page, per_page)
 
             traversal = traversal_func(traversal, resolver_input)
+            traversal = filter(traversal, input_dict)
+            traversal = select(traversal)
 
-            response_and_total = filter_func(traversal, input_dict).valueMap(True).\
-                by(unfold()).fold().project("data", "total").select("data", "total").\
+            response_and_total = traversal.fold().project("data", "total").select("data", "total").\
                 by(__.unfold().range(first, last).fold()).by(__.unfold().count()).next()
 
-            response = [format_value_map(value_map) for value_map in response_and_total.get("data")]
+            response = [format(value_map) for value_map in response_and_total.get("data")]
 
             return paginate(response, page, per_page, response_and_total.get("total"))
 
@@ -134,30 +144,38 @@ def vertex_list_field_resolver(filter_func: TraversalFilterFunction) -> Callable
     return wrapper
 
 
-def vertex_field_resolver(traversal_func: TraversalResolverFunction) -> VertexFieldResolverFunction:
-    """
+def vertex_field_resolver(
+        format: FormatFunction = format_value_map,
+        select: TraversalSelectionFunction = select_current_vertex
+) -> Callable:
 
-    :param traversal_func:
-    :return:
-    """
-
-    @functools.wraps(traversal_func)
-    def handler(traversal: GraphTraversal, resolver_input: ResolverInput) -> Optional[Dict]:
+    def wrapper(traversal_func: TraversalResolverFunction) -> VertexFieldResolverFunction:
         """
 
-        :param traversal:
-        :param resolver_input:
+        :param traversal_func:
         :return:
         """
 
-        traversal = traversal_func(traversal, resolver_input).valueMap(True).by(unfold())
+        @functools.wraps(traversal_func)
+        def handler(traversal: GraphTraversal, resolver_input: ResolverInput) -> Optional[Dict]:
+            """
 
-        if traversal.hasNext():
-            return format_value_map(traversal.next())
+            :param traversal:
+            :param resolver_input:
+            :return:
+            """
 
-        return None
+            traversal = traversal_func(traversal, resolver_input)
+            traversal = select(traversal)
 
-    return handler
+            if traversal.hasNext():
+                return format(traversal.next())
+
+            return None
+
+        return handler
+
+    return wrapper
 
 
 def calculated_field_resolver(traversal_func: TraversalResolverFunction) -> CalculatedFieldResolverFunction:
@@ -182,13 +200,21 @@ def calculated_field_resolver(traversal_func: TraversalResolverFunction) -> Calc
     return handler
 
 
-def mutation_resolver(traversal_func: TraversalResolverFunction) -> ResolverFunction:
+def mutation_resolver(
+        format: FormatFunction = format_value_map,
+        select: TraversalSelectionFunction = select_current_vertex
+) -> Callable:
 
-    @functools.wraps(traversal_func)
-    def handler(traversal: GraphTraversal, resolver_input: ResolverInput) -> Dict:
+    def wrapper(traversal_func: TraversalResolverFunction) -> ResolverFunction:
 
-        traversal = traversal_func(traversal, resolver_input).valueMap(True).by(unfold())
+        @functools.wraps(traversal_func)
+        def handler(traversal: GraphTraversal, resolver_input: ResolverInput) -> Dict:
 
-        return format_value_map(traversal.next())
+            traversal = traversal_func(traversal, resolver_input)
+            traversal = select(traversal)
 
-    return handler
+            return format(traversal.next())
+
+        return handler
+
+    return wrapper
