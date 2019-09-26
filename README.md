@@ -182,7 +182,7 @@ Note that these standards must be manually implemented in the original GraphQL s
 so we don't have to manually implement them.
 
 Each of these scalar filters has a corresponding filter in the AppSync-Gremlin library. For example, the `StringFilterInput` has
-the scalar filter `string_filter`. 
+the scalar filter `string_filter`.
 
 ### Pagination
 
@@ -209,8 +209,8 @@ def get_range(page: int, per_page: int) -> Tuple[int, int]:
     return (page - 1) * per_page, page * per_page
 ```
 
-Once the traversal has been submitted and the result set has been return, we format the response into a pagination 
-response object. The GraphQL type for this response object for some GraphQL type `Type` is 
+Once the traversal has been submitted and the result set has been return, we format the response into a pagination
+response object. The GraphQL type for this response object for some GraphQL type `Type` is
 ```
 type Type {
     .
@@ -225,17 +225,17 @@ type TypePage {
     total: Int!
 }
 ```
-where `total` is the `total` number of pages available. 
+where `total` is the `total` number of pages available.
 
 ## Error Handling and Request / Response Mapping Template
 
-The AppSync-Gremlin library provides automatic error handling for AppSync. The library does this via the user of the `AppSyncException`. 
+The AppSync-Gremlin library provides automatic error handling for AppSync. The library does this via the user of the `AppSyncException`.
 The `AppSyncException` requires 3 arguments when instantiated: `error_type`, `error_message` and `error_data` for type
  string, string and dictionary respectively.
 
-For example, consider the mutation resolver that creates a `User` vertex. Naturally we want to ensure that a user doesn't have a duplicate vertex, 
+For example, consider the mutation resolver that creates a `User` vertex. Naturally we want to ensure that a user doesn't have a duplicate vertex,
 therefore we must add some form of validation within the resolver code which raises an `AppSyncException` with the relevant error information
-if the validation fails. 
+if the validation fails.
 
 ```python
 @mutation_resolver
@@ -243,7 +243,7 @@ def create_user(traversal: GraphTraversal, resolver_input: ResolverInput) -> Gra
 
     username = resolver_input.arguments.get("username")
     user = traversal.V().hasLabel("User").has("username", username)
-    
+
     if user.hasNext():
         raise AppSyncException(
             error_type="BAD_REQUEST",
@@ -252,7 +252,7 @@ def create_user(traversal: GraphTraversal, resolver_input: ResolverInput) -> Gra
                 "username": username
             }
         )
-        
+
     .
     .
     .
@@ -275,11 +275,13 @@ For all resolvers, we must have the request template mapping:
 ```
 and the response mapping template:
 ```
-#if ($context.result && $contet.result.error)
+#if ($context.result && $context.result.error)
     $utils.error($context.result.error.error_message, $context.result.error.error_type, $context.result.error.data)
 #else
     $utils.toJson($context.result.data)
 #end
+
+$util.toJson($context.result)
 ```
 ### Usage
 
