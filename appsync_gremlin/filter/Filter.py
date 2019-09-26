@@ -259,7 +259,7 @@ def edge_filter(edge_direction: EdgeDirection, vertex_filter_func: TraversalFilt
 
     def filter_func(traversal: GraphTraversal, input_dict: Dict) -> GraphTraversal:
 
-        traversal_ = EDGE_DIRECTION_MAP[edge_direction]
+        traversal_ = EDGE_DIRECTION_MAP[edge_direction]()
 
         traversal_ = vertex_filter_func(traversal_, input_dict)
 
