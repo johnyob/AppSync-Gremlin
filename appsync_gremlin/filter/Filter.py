@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Callable
 from enum import Enum
 import functools
 
-from gremlin_python.process.graph_traversal import GraphTraversal, out, in_
+from gremlin_python.process.graph_traversal import GraphTraversal, out, in_, inV, outV
 
 
 ###
@@ -17,10 +17,23 @@ class RelationshipDirection(Enum):
     IN = 0
     OUT = 1
 
+class EdgeDirection(Enum):
+    """
+    Direction of edge -> vertex when traverser is on the edge.
+    """
+
+    IN = 0
+    OUT = 1
+
 
 RELATIONSHIP_DIRECTION_MAP = {
     RelationshipDirection.IN: in_,
     RelationshipDirection.OUT: out
+}
+
+EDGE_DIRECTION_MAP = {
+    EdgeDirection.IN: inV,
+    EdgeDirection.OUT: outV
 }
 
 
@@ -217,6 +230,36 @@ def relationship_filter(relationship: Relationship, vertex_filter_func: Traversa
     def filter_func(traversal: GraphTraversal, input_dict: Dict) -> GraphTraversal:
 
         traversal_ = RELATIONSHIP_DIRECTION_MAP[relationship_direction](relationship_name)
+
+        traversal_ = vertex_filter_func(traversal_, input_dict)
+
+        return traversal.where(traversal_)
+
+    return filter_func
+
+
+def edge_filter(edge_direction: EdgeDirection, vertex_filter_func: TraversalFilterFunction) -> TraversalFilterFunction:
+    """
+    The edge filter construction function. This function takes a edge direction and a vertex filter
+    and produces a gremlin traversal that filters edges based on the vertex endpoints.
+
+    Using the edge direction E, E \in {IN, OUT}, we can construct a Gremlin traversal g' that filters
+    the traversal g (where all traversers of g are on edges) based on whether the endpoint vertex
+    of the edge in direction E satisfies the filters applied to the endpoint vertex.
+    This traversal has the general form:
+
+        g' = g.where(v_f(E()))
+
+    where v_f is some vertex filter.
+
+    :param edge_direction: (EdgeDirection)
+    :param vertex_filter_func: (TraversalFilterFunction)
+    :return: (TraversalFilterFunction)
+    """
+
+    def filter_func(traversal: GraphTraversal, input_dict: Dict) -> GraphTraversal:
+
+        traversal_ = EDGE_DIRECTION_MAP[edge_direction]
 
         traversal_ = vertex_filter_func(traversal_, input_dict)
 
