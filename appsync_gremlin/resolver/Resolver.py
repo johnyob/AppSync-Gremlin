@@ -12,6 +12,18 @@ from appsync_gremlin.filter.Filter import TraversalFilterFunction
 
 ### Helpers
 
+GREMLIN_KEY_MAP = {
+    T.label: "__typename"
+}
+
+
+def format_gremlin_keys(key: T) -> str:
+
+    if key in GREMLIN_KEY_MAP:
+        return GREMLIN_KEY_MAP.get(key)
+
+    return key.name
+
 
 def format_key(key: Any) -> Any:
     """
@@ -21,7 +33,7 @@ def format_key(key: Any) -> Any:
     """
 
     if isinstance(key, T):
-        return key.name
+        return format_gremlin_keys(key)
 
     return key
 
